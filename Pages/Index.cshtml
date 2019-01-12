@@ -23,9 +23,9 @@ async function startAsync() {
     const streams = await connection.invoke("ListStreams");
     const list = document.getElementById('streamList');
     const listBody = list.getElementsByTagName('ul')[0];
-    for (let stream in streams) {
+    for (let i = 0; i < streams.length; i++) {
         const elem = document.createElement('li');
-        elem.innerText = stream;
+        elem.innerText = streams[i];
         listBody.appendChild(elem);
         // TODO: add link to watch stream
     }
