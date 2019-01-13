@@ -34,7 +34,12 @@ namespace StreamR
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_3_0);
 
-            services.AddSignalR();
+            services.AddSignalR(o =>
+            {
+                o.EnableDetailedErrors = true;
+            });
+
+            services.AddSingleton<StreamManager>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -57,7 +62,11 @@ namespace StreamR
 
             app.UseSignalR(route =>
             {
-                route.MapHub<StreamHub>("/stream");
+                route.MapHub<StreamHub>("/stream", o =>
+                {
+                    o.TransportMaxBufferSize = 1000000;
+                    o.ApplicationMaxBufferSize = 1000000;
+                });
             });
 
             app.UseMvc();

@@ -7,29 +7,111 @@
 Available streams:
 <div id="streamList">
     <ul position="absolute">
+        <li>No streams available</li>
     </ul>
 </div>
 
+<input type="button" id="startStream" value="Start streaming" />
+
+<pre id="myPre"></pre>
+<canvas id="myCanvas"></canvas>
+
 <script src="~/lib/signalr/signalr.js"></script>
+<script src="~/lib/ascii.js"></script>
+<script src="~/lib/camera.js"></script>
 
 <script>
+let connection;
+
 async function startAsync() {
-    const connection = new signalR.HubConnectionBuilder()
+    connection = new signalR.HubConnectionBuilder()
         .withUrl("/stream", { logMessageContent: true, logger: signalR.LogLevel.Trace })
         .build();
 
+    let closed = false;
+    let isStreaming = false;
+    let subject;
+    connection.onclose(function (err) {
+        closed = true;
+        if (isStreaming === true) {
+            subject.complete();
+            camera.stop();
+            isStreaming = false;
+        }
+    });
     await connection.start();
 
     const streams = await connection.invoke("ListStreams");
-    const list = document.getElementById('streamList');
-    const listBody = list.getElementsByTagName('ul')[0];
-    for (let i = 0; i < streams.length; i++) {
-        const elem = document.createElement('li');
-        elem.innerText = streams[i];
-        listBody.appendChild(elem);
-        // TODO: add link to watch stream
+    if (streams.length > 0) {
+        const list = document.getElementById('streamList');
+        const listBody = list.getElementsByTagName('ul')[0];
+        listBody.innerHTML = '';
+        for (let i = 0; i < streams.length; i++) {
+            const elem = document.createElement('li');
+            const strmButton = document.createElement('input');
+            strmButton.id = "button" + streams[i];
+            strmButton.type = "button";
+            strmButton.value = "Watch stream";
+            strmButton.onclick = function () { watchStream(streams[i]); };
+            elem.innerText = streams[i];
+            elem.appendChild(strmButton);
+            listBody.appendChild(elem);
+        }
+    }
+
+    const startStreamButton = document.getElementById('startStream');
+    startStreamButton.onclick = async function () {
+        startStreamButton.setAttribute("disabled", "disabled");
+        const asciiCanvas = document.getElementById("myPre");
+
+        subject = new signalR.Subject();
+
+        camera.init({
+            width: 120,
+            height: 90,
+            fps: 30,
+            mirror: false,
+            targetCanvas: document.getElementById("myCanvas"),
+
+            onFrame: function(canvas) {
+                ascii.fromCanvas(canvas, {
+                    contrast: 150,
+                    callback: function(asciiString) {
+                        subject.next(asciiString);
+                        asciiCanvas.innerHTML = asciiString;
+                    }
+                });
+            },
+
+            onSuccess: function() {
+            },
+
+            onError: function(error) {
+                console.log(error);
+            }
+        });
+
+        await connection.send("StartStream", "Some name", subject);
     }
 }
 
 startAsync();
+
+async function watchStream(streamName) {
+    const feed = document.getElementById("myPre");
+        
+    connection.stream("WatchStream", streamName).subscribe({
+        next: (item) => {
+            feed.innerHTML = item;
+        },
+        complete: () => {
+            feed.innerHTML = "Stream completed";
+            console.log("Stream is finished.");
+        },
+        error: (err) => {
+            feed.innerHTML = "Stream closed with an error";
+            console.log("Failed to watch the stream: " + err);
+        },
+    });
+}
 </script>

@@ -1,36 +1,68 @@
+using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 
 public class StreamHub : Hub
 {
+    private readonly StreamManager _streamManager;
+    
+    public StreamHub(StreamManager streamManager)
+    {
+        _streamManager = streamManager;
+    }
+
     public List<string> ListStreams()
     {
-        return new List<string>() { "test" };
+        return _streamManager.ListStreams();
     }
 
-    public ChannelReader<byte[]> WatchStream(string streamName)
+    public ChannelReader<string> WatchStream(string streamName)
     {
         // TODO:
-        // Find stream
         // Allow client to stop watching a stream, or is that automatic if they cancel on the client (double check this)
-        var channel = Channel.CreateUnbounded<byte[]>();
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(1000);
-            channel.Writer.Complete();
-        });
-        return channel.Reader;
+
+        var stream = _streamManager.GetStream(streamName);
+        return stream;
     }
 
-    public async Task Stream(string streamName, ChannelReader<byte[]> streamContent)
+    public async Task StartStream(string streamName, ChannelReader<string> streamContent)
     {
         // TODO:
-        // Check if someone already has that stream name
         // Only allow each client to stream one at a time
         // Pass stream through to watchers
 
-        await streamContent.WaitToReadAsync();
+        var channel = Channel.CreateBounded<string>(options: new BoundedChannelOptions(2) {
+            FullMode = BoundedChannelFullMode.DropOldest
+        });
+        //var channel = Channel.CreateUnbounded<string>();
+
+        if (!_streamManager.AddStream(streamName, channel))
+        {
+            throw new HubException("This stream name has already been taken.");
+        }
+
+        try
+        {
+            // TODO: I didn't think `Context.ConnectionAborted` was needed here... need to check that out
+            while (await streamContent.WaitToReadAsync(Context.ConnectionAborted))
+            {
+                while (streamContent.TryRead(out var content))
+                {
+                    await channel.Writer.WriteAsync(content);
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            channel.Writer.Complete(exception);
+        }
+        finally
+        {
+            _streamManager.RemoveStream(streamName);
+            channel.Writer.Complete();
+        }
     }
 }
