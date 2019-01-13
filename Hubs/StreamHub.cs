@@ -64,7 +64,8 @@ public class StreamHub : Hub
         {
             _streamManager.RemoveStream(streamName);
             await Clients.Others.SendAsync("RemoveStream", streamName);
-            channel.Writer.Complete();
         }
+
+        channel.Writer.Complete();
     }
 }

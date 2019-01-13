@@ -87,7 +87,7 @@ async function startAsync() {
 
             onFrame: function(canvas) {
                 ascii.fromCanvas(canvas, {
-                    contrast: 150,
+                    contrast: 170,
                     callback: function(asciiString) {
                         subject.next(asciiString);
                         asciiCanvas.innerHTML = asciiString;
