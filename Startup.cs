@@ -64,8 +64,8 @@ namespace StreamR
             {
                 route.MapHub<StreamHub>("/stream", o =>
                 {
-                    o.TransportMaxBufferSize = 1000000;
-                    o.ApplicationMaxBufferSize = 1000000;
+                    //o.TransportMaxBufferSize = 1000000;
+                    //o.ApplicationMaxBufferSize = 1000000;
                 });
             });
 

@@ -23,7 +23,8 @@ public class StreamHub : Hub
     {
         // TODO:
         // Allow client to stop watching a stream, or is that automatic if they cancel on the client (double check this)
-
+        // There can be multiple consumers, so we'll need to do something about that so they all get the frames instead of getting (1 / # clients) frames
+ 
         var stream = _streamManager.GetStream(streamName);
         return stream;
     }
@@ -36,7 +37,6 @@ public class StreamHub : Hub
         var channel = Channel.CreateBounded<string>(options: new BoundedChannelOptions(2) {
             FullMode = BoundedChannelFullMode.DropOldest
         });
-        //var channel = Channel.CreateUnbounded<string>();
 
         if (!_streamManager.AddStream(streamName, channel))
         {

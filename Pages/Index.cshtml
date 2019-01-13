@@ -11,7 +11,9 @@ Available streams:
     </ul>
 </div>
 
+Stream name: <input type="textbox" id="streamName" value="" />
 <input type="button" id="startStream" value="Start streaming" />
+<input type="button" id="stopStream" value="Stop streaming" disabled />
 
 <pre id="myPre"></pre>
 <canvas id="myCanvas"></canvas>
@@ -58,8 +60,20 @@ async function startAsync() {
     }
 
     const startStreamButton = document.getElementById('startStream');
+    const stopStreamButton = document.getElementById('stopStream');
+    stopStreamButton.onclick = function () {
+        stopStreamButton.setAttribute("disabled", "disabled");
+        startStreamButton.removeAttribute("disabled");
+        if (isStreaming === true) {
+            subject.complete();
+            camera.stop();
+            isStreaming = false;
+        }
+    }
     startStreamButton.onclick = async function () {
         startStreamButton.setAttribute("disabled", "disabled");
+        stopStreamButton.removeAttribute("disabled");
+        let streamName = document.getElementById("streamName").value;
         const asciiCanvas = document.getElementById("myPre");
 
         subject = new signalR.Subject();
@@ -82,6 +96,7 @@ async function startAsync() {
             },
 
             onSuccess: function() {
+                isStreaming = true;
             },
 
             onError: function(error) {
@@ -89,7 +104,10 @@ async function startAsync() {
             }
         });
 
-        await connection.send("StartStream", "Some name", subject);
+        if (streamName === "") {
+            streamName = "random name " + Math.random() * 2;
+        }
+        await connection.send("StartStream", streamName, subject);
     }
 }
 
