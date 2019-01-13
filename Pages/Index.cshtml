@@ -39,23 +39,21 @@ async function startAsync() {
             isStreaming = false;
         }
     });
+
+    connection.on("NewStream", function (name) {
+        addStream(name);
+    });
+
+    connection.on("RemoveStream", function (name) {
+        removeStream(name);
+    });
+
     await connection.start();
 
     const streams = await connection.invoke("ListStreams");
     if (streams.length > 0) {
-        const list = document.getElementById('streamList');
-        const listBody = list.getElementsByTagName('ul')[0];
-        listBody.innerHTML = '';
         for (let i = 0; i < streams.length; i++) {
-            const elem = document.createElement('li');
-            const strmButton = document.createElement('input');
-            strmButton.id = "button" + streams[i];
-            strmButton.type = "button";
-            strmButton.value = "Watch stream";
-            strmButton.onclick = function () { watchStream(streams[i]); };
-            elem.innerText = streams[i];
-            elem.appendChild(strmButton);
-            listBody.appendChild(elem);
+            addStream(streams[i]);
         }
     }
 
@@ -98,9 +96,14 @@ async function startAsync() {
 startAsync();
 
 async function watchStream(streamName) {
+    const watchBtn = document.getElementById("button " + streamName);
+    watchBtn.setAttribute("disabled", "disabled");
+    const closeBtn = document.getElementById("button close " + streamName);
+    closeBtn.removeAttribute("disabled");
+
     const feed = document.getElementById("myPre");
         
-    connection.stream("WatchStream", streamName).subscribe({
+    const ISub = connection.stream("WatchStream", streamName).subscribe({
         next: (item) => {
             feed.innerHTML = item;
         },
@@ -113,5 +116,54 @@ async function watchStream(streamName) {
             console.log("Failed to watch the stream: " + err);
         },
     });
+
+    closeBtn.onclick = function () {
+        ISub.dispose();
+        closeBtn.setAttribute("disabled", "disabled");
+        watchBtn.removeAttribute("disabled");
+    };
+}
+
+function addStream(streamName) {
+    const list = document.getElementById('streamList');
+    const listBody = list.getElementsByTagName('ul')[0];
+    if (listBody.children[0].innerHTML === "No streams available") {
+        // Clear the list
+        listBody.innerHTML = '';
+    }
+
+    const strmButton = document.createElement('input');
+    strmButton.id = "button " + streamName;
+    strmButton.type = "button";
+    strmButton.value = "Watch stream";
+    strmButton.onclick = function () { watchStream(streamName); };
+    
+    const strmEndButton = document.createElement('input');
+    strmEndButton.id = "button close " + streamName;
+    strmEndButton.type = "button";
+    strmEndButton.value = "Stop watching stream";
+    strmEndButton.setAttribute("disabled", "disabled");
+
+    const elem = document.createElement('li');
+    elem.id = "li " + streamName;
+    elem.innerText = streamName;
+    elem.appendChild(strmButton);
+    elem.appendChild(strmEndButton);
+    listBody.appendChild(elem);
+}
+
+function removeStream(streamName) {
+    const list = document.getElementById('streamList');
+    const listBody = list.getElementsByTagName('ul')[0];
+    if (listBody.children.length === 1) {
+        listBody.innerHTML = '';
+        const elem = document.createElement('li');
+        elem.innerText = "No streams available";
+        listBody.appendChild(elem);
+        return;
+    }
+
+    const li = document.getElementById("li " + streamName);
+    listBody.removeChild(li);
 }
 </script>

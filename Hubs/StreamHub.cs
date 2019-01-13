@@ -32,7 +32,6 @@ public class StreamHub : Hub
     {
         // TODO:
         // Only allow each client to stream one at a time
-        // Pass stream through to watchers
 
         var channel = Channel.CreateBounded<string>(options: new BoundedChannelOptions(2) {
             FullMode = BoundedChannelFullMode.DropOldest
@@ -43,6 +42,8 @@ public class StreamHub : Hub
         {
             throw new HubException("This stream name has already been taken.");
         }
+
+        await Clients.Others.SendAsync("NewStream", streamName);
 
         try
         {
@@ -62,6 +63,7 @@ public class StreamHub : Hub
         finally
         {
             _streamManager.RemoveStream(streamName);
+            await Clients.Others.SendAsync("RemoveStream", streamName);
             channel.Writer.Complete();
         }
     }
