@@ -19,13 +19,12 @@ public class StreamHub : Hub
         return _streamManager.ListStreams();
     }
 
-    public ChannelReader<string> WatchStream(string streamName)
+    public ChannelReader<string> WatchStream(string streamName, CancellationToken token)
     {
         // TODO:
         // Allow client to stop watching a stream, or is that automatic if they cancel on the client (double check this)
-        // There can be multiple consumers, so we'll need to do something about that so they all get the frames instead of getting (1 / # clients) frames
  
-        var stream = _streamManager.GetStream(streamName);
+        var stream = _streamManager.GetStream(streamName, token);
         return stream;
     }
 

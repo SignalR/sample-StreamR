@@ -27,7 +27,7 @@ let connection;
 
 async function startAsync() {
     connection = new signalR.HubConnectionBuilder()
-        .withUrl("/stream", { logMessageContent: true, logger: signalR.LogLevel.Trace })
+        .withUrl("/stream", { /*logMessageContent: true,*/ logger: signalR.LogLevel.Information })
         .build();
 
     let closed = false;
@@ -82,7 +82,7 @@ async function startAsync() {
             width: 120,
             height: 90,
             fps: 30,
-            mirror: false,
+            mirror: true,
             targetCanvas: document.getElementById("myCanvas"),
 
             onFrame: function(canvas) {
