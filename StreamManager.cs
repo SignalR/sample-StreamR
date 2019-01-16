@@ -82,7 +82,10 @@ public class StreamManager
             throw new HubException("stream doesn't exist");
         }
 
-        var channel = Channel.CreateBounded<string>(2);
+        var channel = Channel.CreateBounded<string>(options: new BoundedChannelOptions(2) {
+            FullMode = BoundedChannelFullMode.DropOldest
+        });
+
         source.Lock.Wait();
         try
         {
