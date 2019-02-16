@@ -21,50 +21,23 @@ public class StreamHub : Hub
 
     public ChannelReader<string> WatchStream(string streamName, CancellationToken token)
     {
-        // TODO:
-        // Allow client to stop watching a stream, or is that automatic if they cancel on the client (double check this)
- 
-        var stream = _streamManager.GetStream(streamName, token);
-        return stream;
+        return _streamManager.Subscribe(streamName, token);
     }
 
     public async Task StartStream(string streamName, ChannelReader<string> streamContent)
     {
-        // TODO:
-        // Only allow each client to stream one at a time
-
-        var channel = Channel.CreateBounded<string>(options: new BoundedChannelOptions(2) {
-            FullMode = BoundedChannelFullMode.DropOldest
-        });
-
-        if (!_streamManager.AddStream(streamName, channel))
-        {
-            throw new HubException("This stream name has already been taken.");
-        }
-
-        await Clients.Others.SendAsync("NewStream", streamName);
-
         try
         {
-            // TODO: I didn't think `Context.ConnectionAborted` was needed here... need to check that out
-            while (await streamContent.WaitToReadAsync(Context.ConnectionAborted))
-            {
-                while (streamContent.TryRead(out var content))
-                {
-                    await channel.Writer.WriteAsync(content);
-                }
-            }
-        }
-        catch (Exception exception)
-        {
-            channel.Writer.Complete(exception);
+            var streamTask = _streamManager.RunStreamAsync(streamName, streamContent);
+
+            // Tell everyone about your stream!
+            await Clients.Others.SendAsync("NewStream", streamName);
+
+            await streamTask;
         }
         finally
         {
-            _streamManager.RemoveStream(streamName);
             await Clients.Others.SendAsync("RemoveStream", streamName);
         }
-
-        channel.Writer.Complete();
     }
 }

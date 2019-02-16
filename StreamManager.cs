@@ -7,14 +7,8 @@ using Microsoft.AspNetCore.SignalR;
 
 public class StreamManager
 {
-    private class StreamHolder
-    {
-        public Channel<string> Source;
-        public List<Channel<string>> Viewers = new List<Channel<string>>();
-        public SemaphoreSlim Lock = new SemaphoreSlim(1, 1);
-    }
-
     private readonly ConcurrentDictionary<string, StreamHolder> _streams;
+    private long _globalClientId;
 
     public StreamManager()
     {
@@ -23,47 +17,45 @@ public class StreamManager
 
     public List<string> ListStreams()
     {
-        // Ewww, but it should only be called once per client, we'll send stream additions and deletions to clients individually
-        var streams = _streams.ToArray();
-        var streamList = new List<string>(streams.Length);
-        foreach (var item in streams)
+        var streamList = new List<string>();
+        foreach (var item in _streams)
         {
             streamList.Add(item.Key);
         }
         return streamList;
     }
 
-    public bool AddStream(string streamName, Channel<string> stream)
+    public async Task RunStreamAsync(string streamName, ChannelReader<string> stream)
     {
         var streamHolder = new StreamHolder() { Source = stream };
 
-        _ = Task.Run(async () =>
+        // Add before yielding
+        // This fixes a race where we tell clients a new stream arrives before adding the stream
+        _streams.TryAdd(streamName, streamHolder);
+
+        await Task.Yield();
+
+        try
         {
-            while (await stream.Reader.WaitToReadAsync())
+            while (await stream.WaitToReadAsync())
             {
-                while (stream.Reader.TryRead(out var item))
+                while (stream.TryRead(out var item))
                 {
-                    await streamHolder.Lock.WaitAsync();
-                    try
+                    foreach (var viewer in streamHolder.Viewers)
                     {
-                        foreach (var viewer in streamHolder.Viewers)
+                        try
                         {
-                            try
-                            {
-                                await viewer.Writer.WriteAsync(item);
-                            }
-                            catch { }
+                            await viewer.Value.Writer.WriteAsync(item);
                         }
-                    }
-                    finally
-                    {
-                        streamHolder.Lock.Release();
+                        catch { }
                     }
                 }
             }
-        });
-
-        return _streams.TryAdd(streamName, streamHolder);
+        }
+        finally
+        {
+            RemoveStream(streamName);
+        }
     }
 
     public void RemoveStream(string streamName)
@@ -71,45 +63,37 @@ public class StreamManager
         _streams.TryRemove(streamName, out var streamHolder);
         foreach (var viewer in streamHolder.Viewers)
         {
-            viewer.Writer.TryComplete();
+            viewer.Value.Writer.TryComplete();
         }
     }
 
-    public ChannelReader<string> GetStream(string streamName, CancellationToken token)
+    public ChannelReader<string> Subscribe(string streamName, CancellationToken token)
     {
         if (!_streams.TryGetValue(streamName, out var source))
         {
             throw new HubException("stream doesn't exist");
         }
 
+        var id = Interlocked.Increment(ref _globalClientId);
+
         var channel = Channel.CreateBounded<string>(options: new BoundedChannelOptions(2) {
             FullMode = BoundedChannelFullMode.DropOldest
         });
 
-        source.Lock.Wait();
-        try
-        {
-            source.Viewers.Add(channel);
-        }
-        finally
-        {
-            source.Lock.Release();
-        }
+        source.Viewers.TryAdd(id, channel);
 
-        token.Register((s) =>
+        // Register for client closing stream, this token will always fire (handled by SignalR)
+        token.Register(() =>
         {
-           var streamHolder = s as StreamHolder;
-           streamHolder.Lock.Wait();
-           try
-           {
-               streamHolder.Viewers.Remove(channel);
-           }
-           finally
-           {
-               streamHolder.Lock.Release();
-           }
-        }, source);
+            source.Viewers.TryRemove(id, out _);
+        });
 
         return channel.Reader;
+    }
+
+    private class StreamHolder
+    {
+        public ChannelReader<string> Source;
+        public ConcurrentDictionary<long, Channel<string>> Viewers = new ConcurrentDictionary<long, Channel<string>>();
     }
 }
