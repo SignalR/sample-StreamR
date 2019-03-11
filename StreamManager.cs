@@ -9,13 +9,8 @@ namespace StreamR
 {
     public class StreamManager
     {
-        private readonly ConcurrentDictionary<string, StreamHolder> _streams;
+        private readonly ConcurrentDictionary<string, StreamHolder> _streams = new ConcurrentDictionary<string, StreamHolder>();
         private long _globalClientId;
-
-        public StreamManager()
-        {
-            _streams = new ConcurrentDictionary<string, StreamHolder>();
-        }
 
         public List<string> ListStreams()
         {
@@ -66,7 +61,7 @@ namespace StreamR
             }
         }
 
-        public IAsyncEnumerable<string> Subscribe(string streamName, CancellationToken token)
+        public IAsyncEnumerable<string> Subscribe(string streamName, CancellationToken cancellationToken)
         {
             if (!_streams.TryGetValue(streamName, out var source))
             {
@@ -83,7 +78,7 @@ namespace StreamR
             source.Viewers.TryAdd(id, channel);
 
             // Register for client closing stream, this token will always fire (handled by SignalR)
-            token.Register(() =>
+            cancellationToken.Register(() =>
             {
                 source.Viewers.TryRemove(id, out _);
             });
