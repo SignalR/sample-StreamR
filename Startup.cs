@@ -62,11 +62,7 @@ namespace StreamR
 
             app.UseSignalR(route =>
             {
-                route.MapHub<StreamHub>("/stream", o =>
-                {
-                    //o.TransportMaxBufferSize = 1000000;
-                    //o.ApplicationMaxBufferSize = 1000000;
-                });
+                route.MapHub<StreamHub>("/stream");
             });
 
             app.UseMvc();
