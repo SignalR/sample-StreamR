@@ -5,39 +5,42 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 
-public class StreamHub : Hub
+namespace StreamR
 {
-    private readonly StreamManager _streamManager;
-    
-    public StreamHub(StreamManager streamManager)
+    public class StreamHub : Hub
     {
-        _streamManager = streamManager;
-    }
+        private readonly StreamManager _streamManager;
 
-    public List<string> ListStreams()
-    {
-        return _streamManager.ListStreams();
-    }
-
-    public ChannelReader<string> WatchStream(string streamName, CancellationToken token)
-    {
-        return _streamManager.Subscribe(streamName, token);
-    }
-
-    public async Task StartStream(string streamName, ChannelReader<string> streamContent)
-    {
-        try
+        public StreamHub(StreamManager streamManager)
         {
-            var streamTask = _streamManager.RunStreamAsync(streamName, streamContent);
-
-            // Tell everyone about your stream!
-            await Clients.Others.SendAsync("NewStream", streamName);
-
-            await streamTask;
+            _streamManager = streamManager;
         }
-        finally
+
+        public List<string> ListStreams()
         {
-            await Clients.Others.SendAsync("RemoveStream", streamName);
+            return _streamManager.ListStreams();
+        }
+
+        public IAsyncEnumerable<string> WatchStream(string streamName, CancellationToken cancellationToken)
+        {
+            return _streamManager.Subscribe(streamName, cancellationToken);
+        }
+
+        public async Task StartStream(string streamName, ChannelReader<string> streamContent)
+        {
+            try
+            {
+                var streamTask = _streamManager.RunStreamAsync(streamName, streamContent);
+
+                // Tell everyone about your stream!
+                await Clients.Others.SendAsync("NewStream", streamName);
+
+                await streamTask;
+            }
+            finally
+            {
+                await Clients.Others.SendAsync("RemoveStream", streamName);
+            }
         }
     }
 }
