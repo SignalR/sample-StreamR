@@ -38,6 +38,20 @@ var ascii = (function() {
 				// calculate pixel brightness
 				// http://stackoverflow.com/questions/596216/formula-to-determine-brightness-of-rgb-color
 				var brightness = (0.299 * contrastedColor.red + 0.587 * contrastedColor.green + 0.114 * contrastedColor.blue) / 255;
+				
+				var r = color.red.toString(16);
+				var g = color.green.toString(16);
+				var b = color.blue.toString(16);
+
+				if (r.length == 1)
+				  r = "0" + r;
+				if (g.length == 1)
+				  g = "0" + g;
+				if (b.length == 1)
+				  b = "0" + b;
+				var colorString = r + g + b;
+				
+				character = "<span style='color:#" + colorString + "'>" + character + "</span>";
 
 				var character = characters[(characters.length - 1) - Math.round(brightness * (characters.length - 1))];
 

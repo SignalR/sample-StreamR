@@ -47,16 +47,23 @@ namespace StreamR
                 app.UseHsts();
             }
 
+            app.UseRouting(); 
+
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseCookiePolicy();
 
-            app.UseSignalR(route =>
+            app.UseEndpoints(endpoints =>
             {
-                route.MapHub<StreamHub>("/stream");
+                  // Mapping of endpoints goes here:
+                endpoints.MapControllers();
+                endpoints.MapRazorPages();
+                endpoints.MapHub<StreamHub>("/stream", o =>
+                {
+                    //o.TransportMaxBufferSize = 1000000;
+                    //o.ApplicationMaxBufferSize = 1000000;
+                });
             });
-
-            app.UseMvc();
         }
     }
 }
