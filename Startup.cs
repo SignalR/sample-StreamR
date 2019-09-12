@@ -51,12 +51,13 @@ namespace StreamR
             app.UseStaticFiles();
             app.UseCookiePolicy();
 
-            app.UseSignalR(route =>
-            {
-                route.MapHub<StreamHub>("/stream");
-            });
+            app.UseRouting();
 
-            app.UseMvc();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapRazorPages();
+                endpoints.MapHub<StreamHub>("/stream");
+            });
         }
     }
 }

@@ -7,7 +7,6 @@
 
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.App" Version="3.0.0-preview-19075-0444" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="3.0.0-preview-19075-0444" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="3.0.0-preview-19075-0444" />
   </ItemGroup>
