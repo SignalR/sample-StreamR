@@ -26,7 +26,7 @@ namespace StreamR
             return _streamManager.Subscribe(streamName, cancellationToken);
         }
 
-        public async Task StartStream(string streamName, ChannelReader<string> streamContent)
+        public async Task StartStream(string streamName, IAsyncEnumerable<string> streamContent)
         {
             try
             {

@@ -22,7 +22,7 @@ namespace StreamR
             return streamList;
         }
 
-        public async Task RunStreamAsync(string streamName, ChannelReader<string> stream)
+        public async Task RunStreamAsync(string streamName, IAsyncEnumerable<string> stream)
         {
             var streamHolder = new StreamHolder() { Source = stream };
 
@@ -34,7 +34,7 @@ namespace StreamR
 
             try
             {
-                await foreach (var item in stream.ReadAllAsync())
+                await foreach (var item in stream)
                 {
                     foreach (var viewer in streamHolder.Viewers)
                     {
@@ -88,7 +88,7 @@ namespace StreamR
 
         private class StreamHolder
         {
-            public ChannelReader<string> Source;
+            public IAsyncEnumerable<string> Source;
             public ConcurrentDictionary<long, Channel<string>> Viewers = new ConcurrentDictionary<long, Channel<string>>();
         }
     }
